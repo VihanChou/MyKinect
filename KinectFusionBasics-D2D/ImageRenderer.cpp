@@ -8,7 +8,7 @@
 #include "ImageRenderer.h"
 
 /// <summary>
-/// Constructor
+/// 构造函数
 /// </summary>
 ImageRenderer::ImageRenderer( ) :
 	m_hWnd(0) ,
@@ -20,8 +20,11 @@ ImageRenderer::ImageRenderer( ) :
 	m_pBitmap(0)
 { }
 
+
+
+
 /// <summary>
-/// Destructor
+/// 析构函数
 /// </summary>
 ImageRenderer::~ImageRenderer( )
 {

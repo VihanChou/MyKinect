@@ -26,7 +26,7 @@
 /// <returns>status</returns>
 
 
-//TOD程序入口
+//程序入口
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance , _In_opt_ HINSTANCE , _In_ LPWSTR , _In_ int nCmdShow)
 {
 	CKinectFusionBasics application;
@@ -47,7 +47,6 @@ void SetIdentityMatrix(Matrix4 &mat)
 
 
 /// 构造器，初始化四十个变量
-
 CKinectFusionBasics::CKinectFusionBasics( ) :
 	m_pD2DFactory(nullptr) ,
 	m_pDrawDepth(nullptr) ,
@@ -306,7 +305,7 @@ void CKinectFusionBasics::Update( )
 
 	SafeRelease(pDepthFrame);
 }
-
+//【】████████████
 /// <summary>
 /// Handles window messages, passes most to the class instance to handle
 /// </summary>
@@ -337,7 +336,7 @@ LRESULT CALLBACK CKinectFusionBasics::MessageRouter(HWND hWnd , UINT uMsg , WPAR
 
 	return 0;
 }
-
+//████用于装逼
 /// <summary>
 /// Handle windows messages for the class instance
 /// </summary>
@@ -353,6 +352,7 @@ LRESULT CALLBACK CKinectFusionBasics::DlgProc(HWND hWnd , UINT message , WPARAM 
 	{
 
 		//对话框创建后, 对数据进行初始化
+
 		case WM_INITDIALOG:
 		{
 			// Bind application window handle
