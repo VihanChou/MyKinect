@@ -24,6 +24,8 @@
 /// <param name="lpCmdLine">command line arguments</param>
 /// <param name="nCmdShow">whether to display minimized, maximized, or normally</param>
 /// <returns>status</returns>
+
+
 //TOD程序入口
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance , _In_opt_ HINSTANCE , _In_ LPWSTR , _In_ int nCmdShow)
 {
@@ -44,7 +46,7 @@ void SetIdentityMatrix(Matrix4 &mat)
 }
 
 
-/// Constructor， to initlize 40 varibles
+/// 构造器，初始化四十个变量
 
 CKinectFusionBasics::CKinectFusionBasics( ) :
 	m_pD2DFactory(nullptr) ,
@@ -134,7 +136,7 @@ CKinectFusionBasics::CKinectFusionBasics( ) :
 
 }
 
-/// Destructor，
+/// 析构函数
 CKinectFusionBasics::~CKinectFusionBasics( )
 {
 	// Clean up Kinect Fusion
@@ -203,6 +205,7 @@ int CKinectFusionBasics::Run(HINSTANCE hInstance , int nCmdShow)
 	}
 
 	// Create main application window
+	//在此处绑定 IDD_APP窗口作为程序窗口
 	HWND hWndApp = CreateDialogParamW(hInstance , MAKEINTRESOURCE(IDD_APP) , nullptr , (DLGPROC)CKinectFusionBasics::MessageRouter , reinterpret_cast<LPARAM>(this));
 
 	// Show window
@@ -213,6 +216,7 @@ int CKinectFusionBasics::Run(HINSTANCE hInstance , int nCmdShow)
 	// Main message loop
 	while (WM_QUIT!=msg.message)
 	{
+		//显式地检查Kinect帧事件，因为MSGWAITTimeType对象可以返回其他原因，即使它被发出信号。
 		// Explicitly check the Kinect frame event since MsgWaitForMultipleObjects
 		// can return for other reasons even though it is signaled.
 		Update( );
@@ -273,11 +277,11 @@ void CKinectFusionBasics::Update( )
 		INT64 currentTimestamp = 0;
 
 		hr = pDepthFrame->get_RelativeTime(&currentTimestamp);
-		if (SUCCEEDED(hr)&&currentTimestamp-m_lastFrameTimeStamp>cResetOnTimeStampSkippedMilliseconds*10000
-			&&0!=m_lastFrameTimeStamp)
+		if (SUCCEEDED(hr)&&currentTimestamp-m_lastFrameTimeStamp>cResetOnTimeStampSkippedMilliseconds*10000&&0!=m_lastFrameTimeStamp)
 		{
 			m_bResetReconstruction = true;
 		}
+
 		m_lastFrameTimeStamp = currentTimestamp;
 
 		if (SUCCEEDED(hr))
@@ -347,16 +351,21 @@ LRESULT CALLBACK CKinectFusionBasics::DlgProc(HWND hWnd , UINT message , WPARAM 
 {
 	switch (message)
 	{
+
+		//对话框创建后, 对数据进行初始化
 		case WM_INITDIALOG:
 		{
 			// Bind application window handle
+			//[]绑定窗口句柄
 			m_hWnd = hWnd;
 
 			// Init Direct2D
+			//[]初始化 Direct2D
 			D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED , &m_pD2DFactory);
 
 			// Create and initialize a new Direct2D image renderer (take a look at ImageRenderer.h)
 			// We'll use this to draw the data we receive from the Kinect to the screen
+			//[]初始化Direct2D渲染器,用于绘制从Kinect收到的数据
 			m_pDrawDepth = new ImageRenderer( );
 			HRESULT hr = m_pDrawDepth->Initialize(GetDlgItem(m_hWnd , IDC_VIDEOVIEW) , m_pD2DFactory , m_cDepthWidth , m_cDepthHeight , m_cDepthWidth*sizeof(int));
 			if (FAILED(hr))
@@ -365,13 +374,13 @@ LRESULT CALLBACK CKinectFusionBasics::DlgProc(HWND hWnd , UINT message , WPARAM 
 				m_bInitializeError = true;
 			}
 
-			// Look for a connected Kinect, and create it if found
+			//[]Kinect摄像头初始化  Look for a connected Kinect, and create it if found
 			hr = CreateFirstConnected( );
 			if (FAILED(hr))
 			{
 				m_bInitializeError = true;
 			}
-
+			//[]Kinectfusion初始化
 			if (!m_bInitializeError)
 			{
 				hr = InitializeKinectFusion( );
@@ -383,7 +392,7 @@ LRESULT CALLBACK CKinectFusionBasics::DlgProc(HWND hWnd , UINT message , WPARAM 
 		}
 		break;
 
-		// If the title bar X is clicked, destroy app
+		// 窗口关闭消息
 		case WM_CLOSE:
 		DestroyWindow(hWnd);
 		break;
@@ -966,6 +975,8 @@ HRESULT CKinectFusionBasics::ResetReconstruction( )
 
 	return hr;
 }
+
+
 
 /// <summary>
 /// Set the status bar message
