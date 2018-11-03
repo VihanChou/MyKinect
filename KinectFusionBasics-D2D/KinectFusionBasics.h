@@ -1,20 +1,18 @@
-﻿//------------------------------------------------------------------------------
-// <copyright file="KinectFusionBasics.h" company="Microsoft">
-//     Copyright (c) Microsoft Corporation.  All rights reserved.
-// </copyright>
-//------------------------------------------------------------------------------
-
-#pragma once
+﻿#pragma once
 
 #include "resource.h"
+////██ADD BY Vihan
+#include <Shlobj.h>
+#include <atlbase.h>
+
 #include <NuiKinectFusionApi.h>
 #include "ImageRenderer.h"
 
 
-			//Author :Vihan 
-			//Emainl :vihanmy@gmail.com
-			//Time   :
-			//Note   :一共40个全局变量m_（private and public）
+//Author :Vihan 
+//Emainl :vihanmy@gmail.com
+//Time   :
+//Note   :一共40个全局变量m_（private and public）
 
 
 
@@ -25,24 +23,18 @@ class CKinectFusionBasics
 {
 	static const int            cBytesPerPixel = 4;                           // for depth float and int-per-pixel raycast images
 	static const int            cResetOnTimeStampSkippedMilliseconds = 1000;  // ms
-	static const int            cResetOnNumberOfLostFrames = 100;        //丢帧数目
+	static const int            cResetOnNumberOfLostFrames = 100;             //丢帧数目
 	static const int            cStatusMessageMaxLen = MAX_PATH*2;
-	static const int            cTimeDisplayInterval = 10;                /* 时间显示间隔*/
+	static const int            cTimeDisplayInterval = 10;                    /* 时间显示间隔*/
 
 public:
-	/// <summary>
 	/// Constructor
-	/// </summary>
 	CKinectFusionBasics( );
 
-	/// <summary>
 	/// Destructor
-	/// </summary>
 	~CKinectFusionBasics( );
 
-	/// <summary>
 	/// Handles window messages, passes most to the class instance to handle
-	/// </summary>
 	/// <param name="hWnd">window message is for</param>
 	/// <param name="uMsg">message</param>
 	/// <param name="wParam">message data</param>
@@ -50,9 +42,9 @@ public:
 	/// <returns>result of message processing</returns>
 	static LRESULT CALLBACK     MessageRouter(HWND hWnd , UINT message , WPARAM wParam , LPARAM lParam);
 
-	/// <summary>
+
+
 	/// Handle windows messages for a class instance
-	/// </summary>
 	/// <param name="hWnd">window message is for</param>
 	/// <param name="uMsg">message</param>
 	/// <param name="wParam">message data</param>
@@ -60,11 +52,7 @@ public:
 	/// <returns>result of message processing</returns>
 	LRESULT CALLBACK            DlgProc(HWND hWnd , UINT message , WPARAM wParam , LPARAM lParam);
 
-	/// <summary>
-	/// Creates the main window and begins processing
-	/// </summary>
-	/// <param name="hInstance"></param>
-	/// <param name="nCmdShow"></param>
+	// Creates the main window and begins processing
 	int                         Run(HINSTANCE hInstance , int nCmdShow);
 
 private:
@@ -75,7 +63,6 @@ private:
 
 	// 深度数据阅读器
 	IDepthFrameReader*          m_pDepthFrameReader;
-
 	UINT                         m_cDepthWidth;
 	UINT                         m_cDepthHeight;
 	UINT                         m_cDepthImagePixels;
@@ -89,127 +76,105 @@ private:
 
 	BYTE*                       m_pDepthRGBX;
 
-	/// <summary>
 	/// Main processing function
-	/// </summary>
 	void                        Update( );
-
-	/// <summary>
 	/// Create the first connected Kinect found 
-	/// </summary>
 	/// <returns>S_OK on success, otherwise failure code</returns>
 	HRESULT                     CreateFirstConnected( );
 
 	/// <summary>
-	/// Setup or update the Undistortion calculation for the connected camera
+	/// Setup or update the Undistortion calculation for the connected camera 设置或更新连接摄像机的不失真计算
 	/// </summary>
 	HRESULT                     SetupUndistortion( );
 
-	/// <summary>
+
+	//██在Kinect设备 或者 kinectStudio连接之后会被调用
 	/// Handle Coordinate Mapping changed event.
 	/// Note, this happens after sensor connect, or when Kinect Studio connects
-	/// </summary>
 	HRESULT                     OnCoordinateMappingChanged( );
 
-	/// <summary>
+	//██Fusion初始化
 	/// Initialize Kinect Fusion volume and images for processing
-	/// </summary>
 	/// <returns>S_OK on success, otherwise failure code</returns>
 	HRESULT                     InitializeKinectFusion( );
 
-	/// <summary>
+
+	//██处理型的深度数据
 	/// Handle new depth data
-	/// </summary>
 	void                        ProcessDepth( );
 
-	/// <summary>
+	//██重置相机姿势并清除重建容积
 	/// Reset the reconstruction camera pose and clear the volume.
-	/// </summary>
 	/// <returns>S_OK on success, otherwise failure code</returns>
 	HRESULT                     ResetReconstruction( );
 
-	/// <summary>
-	/// Set the status bar message
-	/// </summary>
-	/// <param name="szMessage">message to display</param>
+	//██状态栏消息设置函数
 	void                        SetStatusMessage(WCHAR* szMessage);
 
-	/// <summary>
-	/// The Kinect Fusion Reconstruction Volume
-	/// </summary>
-	INuiFusionReconstruction*   m_pVolume;
 
-	/// <summary>
+	//██Fusion重建容积
+	INuiFusionColorReconstruction*   m_pVolume;
+
+
+	//██Kinect融合体参数
 	/// The Kinect Fusion Volume Parameters
-	/// </summary>
 	NUI_FUSION_RECONSTRUCTION_PARAMETERS m_reconstructionParams;
 
-	/// <summary>
+	//██相机变换
 	// The Kinect Fusion Camera Transform
-	/// </summary>
 	Matrix4                     m_worldToCameraTransform;
 
-	/// <summary>
+
 	// The default Kinect Fusion World to Volume Transform
-	/// </summary>
 	Matrix4                     m_defaultWorldToVolumeTransform;
 
-	/// <summary>
 	/// Frames from the depth input
-	/// </summary>
 	UINT16*                     m_pDepthImagePixelBuffer;
 	NUI_FUSION_IMAGE_FRAME*     m_pDepthFloatImage;
 
-	/// <summary>
 	/// For depth distortion correction
 	//深度失真校正
-	/// </summary>
 	ICoordinateMapper*          m_pMapper;   //坐标映射  
 	DepthSpacePoint*            m_pDepthDistortionMap;  //表示深度图像中的像素坐标。
 	UINT*                       m_pDepthDistortionLT;
 	WAITABLE_HANDLE             m_coordinateMappingChangedEvent;
 
-	/// <summary>
+	//██相机参数
 	/// Kinect camera parameters.
-	/// </summary>
 	NUI_FUSION_CAMERA_PARAMETERS m_cameraParameters;   //
 	bool                        m_bHaveValidCameraParameters;
 
-	/// <summary>
+	//██光线投射重建体积生成的帧
 	/// Frames generated from ray-casting the Reconstruction Volume
-	/// </summary>
 	NUI_FUSION_IMAGE_FRAME*     m_pPointCloud;
 
-	/// <summary>
-	/// Images for display
-	/// </summary>
+
+	//██用于显示的帧数据
+	// Images for display
 	NUI_FUSION_IMAGE_FRAME*     m_pShadedSurface;
 
-	/// <summary>
+
+	//██相机追踪参数
 	/// Camera Tracking parameters
-	/// </summary>
 	int                         m_cLostFrameCounter;
 	bool                        m_bTrackingFailed;
 
-	/// <summary>
+
+	//██是否设置自动检测跟踪失败    真:表示允许自动检测是否跟踪失败    假:表示永远不自动跟踪失败(在构造器中设置)
 	/// Parameter to turn automatic reset of the reconstruction when camera tracking is lost on or off.
 	/// Set to true in the constructor to enable auto reset on cResetOnNumberOfLostFrames lost frames,
 	/// or set false to never automatically reset.
-	/// </summary>
 	bool                        m_bAutoResetReconstructionWhenLost;
 
-	/// <summary>
-	/// Parameter to enable automatic reset of the reconstruction when there is a large
-	/// difference in timestamp between subsequent frames. This should usually be set true as 
-	/// default to enable recorded .xef files to generate a reconstruction reset on looping of
-	/// the playback or scrubbing, however, for debug purposes, it can be set false to prevent
-	/// automatic reset on timeouts.
-	/// </summary>
+	//██确保当相邻帧之间的时间太大的时候能够自动重建
+	/// Parameter to enable automatic reset of the reconstruction when there is a large difference in timestamp between subsequent frames.
+	/// This should usually be set true as default to enable recorded .xef files to generate a reconstruction reset on looping of the playback or scrubbing,
+	/// however, for debug purposes, it can be set false to prevent automatic reset on timeouts.
 	bool                        m_bAutoResetReconstructionOnTimeout;
 
-	/// <summary>
+
+	//██处理参数
 	/// Processing parameters
-	/// </summary>
 	int                         m_deviceIndex;
 	NUI_FUSION_RECONSTRUCTION_PROCESSOR_TYPE m_processorType;
 	bool                        m_bInitializeError;

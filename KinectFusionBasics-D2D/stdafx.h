@@ -20,6 +20,18 @@
 
 #include <Kinect.h>
 
+#include <windows.h>
+
+#include <Shlobj.h>
+
+#include <memory>
+#include <string>
+
+#include <atlbase.h>
+#include <tchar.h>
+#include <strsafe.h>
+
+
 #pragma comment ( lib, "d2d1.lib" )
 
 #ifdef _UNICODE

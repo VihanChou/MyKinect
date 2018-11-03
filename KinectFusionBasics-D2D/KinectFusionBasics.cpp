@@ -1,21 +1,33 @@
-﻿//------------------------------------------------------------------------------
-// <copyright file="KinectFusionBasics.cpp" company="Microsoft">
-//     Copyright (c) Microsoft Corporation.  All rights reserved.
-// </copyright>
-//------------------------------------------------------------------------------
-
-// System includes  
+﻿// System includes  
 #include "stdafx.h"
 #include <string>
 #include <strsafe.h>
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include <new>
+#include<iostream>
+
 
 // Project includes
 #include "resource.h"
 #include "KinectFusionBasics.h"
 
+//██Added  by Vihan
+#include "KinectFusionParams.h"
+#include "KinectFusionHelper.h"
+using namespace std;
+
+
+
+HWND m_hWnd;
+//应用Style 声明
+#pragma comment(linker,"\"/manifestdependency:type='win32' "\
+						"name='Microsoft.Windows.Common-Controls' "\
+						"version='6.0.0.0' processorArchitecture='*' "\
+						"publicKeyToken='6595b64144ccf1df' language='*'\"")
+
+HRESULT SaveMeshFile(INuiFusionColorMesh* pMesh , KinectFusionMeshTypes saveMeshType);
+//██程序入口
 /// <summary>
 /// Entry point for the application
 /// </summary>
@@ -24,29 +36,30 @@
 /// <param name="lpCmdLine">command line arguments</param>
 /// <param name="nCmdShow">whether to display minimized, maximized, or normally</param>
 /// <returns>status</returns>
-
-
-//程序入口
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance , _In_opt_ HINSTANCE , _In_ LPWSTR , _In_ int nCmdShow)
 {
 	CKinectFusionBasics application;
+	//初始化控制台窗口
+	AllocConsole( );
+	freopen("CONOUT$" , "w+t" , stdout);
+	freopen("CONIN$" , "r+t" , stdin);
+	std::cout<<"程序启动调试,日志窗口成功打开"<<std::endl;
+
 	application.Run(hInstance , nCmdShow);
 }
 
-/// <summary>
+//██设置矩阵  在Helper中已经被定义过,在这里不进行再次定义
 /// Set Identity in a Matrix4
-/// </summary>
-/// <param name="mat">The matrix to set to identity</param>
-void SetIdentityMatrix(Matrix4 &mat)
-{
-	mat.M11 = 1; mat.M12 = 0; mat.M13 = 0; mat.M14 = 0;
-	mat.M21 = 0; mat.M22 = 1; mat.M23 = 0; mat.M24 = 0;
-	mat.M31 = 0; mat.M32 = 0; mat.M33 = 1; mat.M34 = 0;
-	mat.M41 = 0; mat.M42 = 0; mat.M43 = 0; mat.M44 = 1;
-}
+/// <param name="mat">The matrix to set to identity
+//void SetIdentityMatrix(Matrix4 &mat)
+//{
+//	mat.M11 = 1; mat.M12 = 0; mat.M13 = 0; mat.M14 = 0;
+//	mat.M21 = 0; mat.M22 = 1; mat.M23 = 0; mat.M24 = 0;
+//	mat.M31 = 0; mat.M32 = 0; mat.M33 = 1; mat.M34 = 0;
+//	mat.M41 = 0; mat.M42 = 0; mat.M43 = 0; mat.M44 = 1;
+//}
 
-
-/// 构造器，初始化四十个变量
+//██构造器，初始化四十个变量
 CKinectFusionBasics::CKinectFusionBasics( ) :
 	m_pD2DFactory(nullptr) ,
 	m_pDrawDepth(nullptr) ,
@@ -78,7 +91,7 @@ CKinectFusionBasics::CKinectFusionBasics( ) :
 	// 从枚举 NUI_IMAGE_RESOLUTION 获得深渡帧的大小
 	// You can use NUI_IMAGE_RESOLUTION_640x480 or NUI_IMAGE_RESOLUTION_320x240 in this sample
 	// 较小的分辨率有利于计算机对每一帧的计算处理，但是这意味着重建结果的细节将会有一定程度的缺失
-	m_cDepthWidth = NUI_DEPTH_RAW_WIDTH;  //512
+	m_cDepthWidth = NUI_DEPTH_RAW_WIDTH;    //512
 	m_cDepthHeight = NUI_DEPTH_RAW_HEIGHT;  //424
 	m_cDepthImagePixels = m_cDepthWidth*m_cDepthHeight; //像素点的格式 高X宽
 
@@ -96,7 +109,7 @@ CKinectFusionBasics::CKinectFusionBasics( ) :
 	// These parameters are for optionally clipping the input depth image 
 	//这些参数用于可选地裁剪输入深度图像。
 	m_fMinDepthThreshold = NUI_FUSION_DEFAULT_MINIMUM_DEPTH;   // min depth in meters
-	m_fMaxDepthThreshold = NUI_FUSION_DEFAULT_MAXIMUM_DEPTH;    // max depth in meters
+	m_fMaxDepthThreshold = 1.0f;    // max depth in meters
 
 	// This parameter is the temporal averaging parameter for depth integration into the reconstruction
 	//这个参数是用于重建的深度积分的时间平均参数。
@@ -135,7 +148,7 @@ CKinectFusionBasics::CKinectFusionBasics( ) :
 
 }
 
-/// 析构函数
+//██析构函数
 CKinectFusionBasics::~CKinectFusionBasics( )
 {
 	// Clean up Kinect Fusion
@@ -176,14 +189,13 @@ CKinectFusionBasics::~CKinectFusionBasics( )
 	SafeRelease(m_pD2DFactory);
 }
 
-/// <summary>
+//██创建主窗口并开始处理点云
 /// Creates the main window and begins processing  //创建主窗口并开始处理
-/// </summary>
 /// <param name="hInstance">handle to the application instance</param>
 /// <param name="nCmdShow">whether to display minimized, maximized, or normally</param>
-
 int CKinectFusionBasics::Run(HINSTANCE hInstance , int nCmdShow)
 {
+
 	MSG       msg = { 0 };
 	WNDCLASS  wc;
 
@@ -209,8 +221,7 @@ int CKinectFusionBasics::Run(HINSTANCE hInstance , int nCmdShow)
 
 	// Show window
 	ShowWindow(hWndApp , nCmdShow);
-
-
+	m_hWnd = hWndApp;
 	//消息循环
 	// Main message loop
 	while (WM_QUIT!=msg.message)
@@ -236,30 +247,30 @@ int CKinectFusionBasics::Run(HINSTANCE hInstance , int nCmdShow)
 	return static_cast<int>(msg.wParam);
 }
 
-/// <summary>
+
+//██程序主要的处理过程
 /// Main processing function
-/// </summary>
-//----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 void CKinectFusionBasics::Update( )
 {
+	//【】检测硬件初始化
 	if (nullptr==m_pNuiSensor)
 	{
 		return;
 	}
-
+	//【】单例程序等待
 	if (m_coordinateMappingChangedEvent!=NULL&&WAIT_OBJECT_0==WaitForSingleObject((HANDLE)m_coordinateMappingChangedEvent , 0))
 	{
 		OnCoordinateMappingChanged( );
 		ResetEvent((HANDLE)m_coordinateMappingChangedEvent);
 	}
-
+	//【】相机初始化
 	if (!m_bHaveValidCameraParameters)
 	{
 		return;
 	}
 
 	m_bResetReconstruction = false;
-
+	//【】深渡帧阅读器初始化检查
 	if (!m_pDepthFrameReader)
 	{
 		return;
@@ -267,6 +278,7 @@ void CKinectFusionBasics::Update( )
 
 	IDepthFrame* pDepthFrame = NULL;
 
+	//【】获取深渡帧
 	HRESULT hr = m_pDepthFrameReader->AcquireLatestFrame(&pDepthFrame);
 
 	if (SUCCEEDED(hr))
@@ -275,12 +287,14 @@ void CKinectFusionBasics::Update( )
 		UINT16 *pBuffer = NULL;
 		INT64 currentTimestamp = 0;
 
+		//【】获取深渡帧关联的时间戳
 		hr = pDepthFrame->get_RelativeTime(&currentTimestamp);
 		if (SUCCEEDED(hr)&&currentTimestamp-m_lastFrameTimeStamp>cResetOnTimeStampSkippedMilliseconds*10000&&0!=m_lastFrameTimeStamp)
 		{
 			m_bResetReconstruction = true;
 		}
 
+		//【】更新最新时间戳
 		m_lastFrameTimeStamp = currentTimestamp;
 
 		if (SUCCEEDED(hr))
@@ -291,6 +305,7 @@ void CKinectFusionBasics::Update( )
 		if (SUCCEEDED(hr))
 		{
 			//copy and remap depth
+			//【】赋值, 重构深度数据
 			const UINT bufferLength = m_cDepthImagePixels;
 			UINT16 * pDepth = m_pDepthImagePixelBuffer;
 			for (UINT i = 0; i<bufferLength; i++ , pDepth++)
@@ -298,14 +313,16 @@ void CKinectFusionBasics::Update( )
 				const UINT id = m_pDepthDistortionLT[i];
 				*pDepth = id<bufferLength ? pBuffer[id] : 0;
 			}
-
+			//【】 进行 KinectFusion
 			ProcessDepth( );
 		}
 	}
 
 	SafeRelease(pDepthFrame);
 }
-//【】████████████
+
+
+//██消息路由
 /// <summary>
 /// Handles window messages, passes most to the class instance to handle
 /// </summary>
@@ -314,7 +331,6 @@ void CKinectFusionBasics::Update( )
 /// <param name="wParam">message data</param>
 /// <param name="lParam">additional message data</param>
 /// <returns>result of message processing</returns>
-
 LRESULT CALLBACK CKinectFusionBasics::MessageRouter(HWND hWnd , UINT uMsg , WPARAM wParam , LPARAM lParam)
 {
 	CKinectFusionBasics* pThis = nullptr;
@@ -336,7 +352,8 @@ LRESULT CALLBACK CKinectFusionBasics::MessageRouter(HWND hWnd , UINT uMsg , WPAR
 
 	return 0;
 }
-//████用于装逼
+
+//██窗口过程
 /// <summary>
 /// Handle windows messages for the class instance
 /// </summary>
@@ -348,9 +365,10 @@ LRESULT CALLBACK CKinectFusionBasics::MessageRouter(HWND hWnd , UINT uMsg , WPAR
 //--------------------------------------------------------------------窗口过程---------------------------------------------------------------------------------
 LRESULT CALLBACK CKinectFusionBasics::DlgProc(HWND hWnd , UINT message , WPARAM wParam , LPARAM)
 {
+
+	int wmid , wmEvent;
 	switch (message)
 	{
-
 		////【】对话框创建后, 对数据进行初始化
 		case WM_INITDIALOG:
 		{
@@ -403,23 +421,57 @@ LRESULT CALLBACK CKinectFusionBasics::DlgProc(HWND hWnd , UINT message , WPARAM 
 
 		// Handle button press
 		case WM_COMMAND:
-		// If the reset reconstruction button was clicked, clear the volume 
-		// and reset tracking parameters
-		if (IDC_BUTTON_RESET_RECONSTRUCTION==LOWORD(wParam)&&BN_CLICKED==HIWORD(wParam))
 		{
-			ResetReconstruction( );
+			wmid = LOWORD(wParam);               //消息解析
+			wmEvent = HIWORD(wParam);
+
+			switch (wmid)
+			{
+				case IDC_BUTTON_GETFILE:        //showButton的按键消息
+				{
+
+					SetStatusMessage(L"IDC_BUTTON_GETFILE");
+					INuiFusionColorMesh *mesh = nullptr;
+					m_pVolume->CalculateMesh(1 , &mesh);
+					SaveMeshFile(mesh , Obj);
+					break;
+				}
+				case IDC_BUTTON_RESET_RECONSTRUCTION:    //showButton的按键消息
+				{
+					ResetReconstruction( );
+					SetStatusMessage(L"IDC_BUTTON_RESET_RECONSTRUCTION");
+					break;
+				}
+				default:
+				{
+					break;
+				}
+			}
 		}
+
+		//// If the reset reconstruction button was clicked, clear the volume 
+		//// and reset tracking parameters
+		//if (IDC_BUTTON_RESET_RECONSTRUCTION==LOWORD(wParam)&&BN_CLICKED==HIWORD(wParam))
+		//{
+		//	ResetReconstruction( );
+		//	SetStatusMessage(L"IDC_BUTTON_RESET_RECONSTRUCTION");
+		//}
+		//else if (IDC_BUTTON_GETFILE==LOWORD(wParam)&&BN_CLICKED==HIWORD(wParam))
+		//{
+		//	SetStatusMessage(L"IDC_BUTTON_GETFILE");
+		//	/*	INuiFusionColorMesh *mesh = nullptr;
+		//		m_pVolume->CalculateMesh(, &mesh);
+		//		SaveMeshFile(mesh , Obj);*/
+		//}
 		break;
 	}
 
 	return FALSE;
 }
 
-/// <summary>
-//【】初始化Kinect摄像头
+
+//██初始化Kinect摄像头
 /// Create the first connected Kinect found 
-/// </summary>
-/// <returns>indicates success or failure</returns>
 HRESULT CKinectFusionBasics::CreateFirstConnected( )
 {
 	HRESULT hr;
@@ -469,6 +521,8 @@ HRESULT CKinectFusionBasics::CreateFirstConnected( )
 	return hr;
 }
 
+
+//██
 void UpdateIntrinsics(NUI_FUSION_IMAGE_FRAME * pImageFrame , NUI_FUSION_CAMERA_PARAMETERS * params)
 {
 	if (pImageFrame!=nullptr && pImageFrame->pCameraParameters!=nullptr && params!=nullptr)
@@ -483,6 +537,7 @@ void UpdateIntrinsics(NUI_FUSION_IMAGE_FRAME * pImageFrame , NUI_FUSION_CAMERA_P
 	_ASSERT(pImageFrame!=nullptr && pImageFrame->pCameraParameters!=nullptr && params!=nullptr);
 }
 
+//██ 设置或更新连接摄像机的不失真计算
 HRESULT CKinectFusionBasics::SetupUndistortion( )
 {
 	HRESULT hr = E_UNEXPECTED;
@@ -565,10 +620,10 @@ HRESULT CKinectFusionBasics::SetupUndistortion( )
 	}
 	return S_OK;
 }
-///////////////////////////////////////////////////////////////////////////////////////////
-/// <summary>
+
+
+//██ 初始化KinectFusion容积和处理过程
 /// Initialize Kinect Fusion volume and images for processing
-/// </summary>
 /// <returns>S_OK on success, otherwise failure code</returns>
 HRESULT CKinectFusionBasics::OnCoordinateMappingChanged( )
 {
@@ -612,10 +667,9 @@ HRESULT CKinectFusionBasics::OnCoordinateMappingChanged( )
 	return hr;
 }
 
-/// <summary>
-/// Initialize Kinect Fusion volume and images for processing
-///【】初始化KinectFusion
-/// </summary>
+
+///██初始化KinectFusion 
+/// Initialize Kinect Fusion volume and images for processing 
 /// <returns>S_OK on success, otherwise failure code</returns>
 HRESULT CKinectFusionBasics::InitializeKinectFusion( )
 {
@@ -625,7 +679,7 @@ HRESULT CKinectFusionBasics::InitializeKinectFusion( )
 	WCHAR description[MAX_PATH];
 	WCHAR instancePath[MAX_PATH];
 	UINT  memorySize = 0;
-	////【】设备检查:硬件是否支持
+	//【】设备检查:硬件是否支持
 	if (FAILED(hr = NuiFusionGetDeviceInfo(
 		m_processorType , //设备类型 CPU or GPU
 		m_deviceIndex ,   //-1表示使用默认设备,设备索引
@@ -637,9 +691,9 @@ HRESULT CKinectFusionBasics::InitializeKinectFusion( )
 	{
 		if (hr==E_NUI_BADINDEX)
 		{
-			// This error code is returned either when the device index is out of range for the processor 
-			// type or there is no DirectX11 capable device installed. As we set -1 (auto-select default) 
-			// for the device index in the parameters, this indicates that there is no DirectX11 capable 
+			// This error code is returned either when the device index is out of range for the processor
+			// type or there is no DirectX11 capable device installed. As we set -1 (auto-select default)
+			// for the device index in the parameters, this indicates that there is no DirectX11 capable
 			// device. The options for users in this case are to either install a DirectX11 capable device
 			// (see documentation for recommended GPUs) or to switch to non-real-time CPU based 
 			// reconstruction by changing the processor type to NUI_FUSION_RECONSTRUCTION_PROCESSOR_TYPE_CPU.
@@ -661,18 +715,18 @@ HRESULT CKinectFusionBasics::InitializeKinectFusion( )
 		参数4 : 世界到相机 坐标转换矩阵
 		参数5 : 返回指针*/
 		//m_reconstructionParams说明
-	//typedef struct _NUI_FUSION_RECONSTRUCTION_PARAMETERS
-	//{
-	//	FLOAT voxelsPerMeter;  //每米体素(体积元素或者体积像素)数量
-	//	UINT voxelCountX;      // 重建X轴体素数量
-	//	UINT voxelCountY;  //重建Y轴体素数量
-	//	UINT voxelCountZ; //重建Z轴体素数量
-	//} 	NUI_FUSION_RECONSTRUCTION_PARAMETERS;
-	//  GPU加速即显卡内存 , CPU加速即系统内存 , 这可是一笔大买卖啊。
-	//	目前主流显存在1G~2G , 差强人意。
+		//typedef struct _NUI_FUSION_RECONSTRUCTION_PARAMETERS
+		//{
+		//	FLOAT voxelsPerMeter;  //每米体素(体积元素或者体积像素)数量
+		//	UINT voxelCountX;      // 重建X轴体素数量
+		//	UINT voxelCountY;  //重建Y轴体素数量
+		//	UINT voxelCountZ; //重建Z轴体素数量
+		//} 	NUI_FUSION_RECONSTRUCTION_PARAMETERS;
+		//  GPU加速即显卡内存 , CPU加速即系统内存 , 这可是一笔大买卖啊。
+		//	目前主流显存在1G~2G , 差强人意。
 
-	// Create the Kinect Fusion Reconstruction Volume   m_pVolume
-	hr = NuiFusionCreateReconstruction(
+		// Create the Kinect Fusion Reconstruction Volume   m_pVolume
+	hr = NuiFusionCreateColorReconstruction(
 		&m_reconstructionParams ,
 		m_processorType , m_deviceIndex ,
 		&m_worldToCameraTransform ,
@@ -703,7 +757,6 @@ HRESULT CKinectFusionBasics::InitializeKinectFusion( )
 		{
 			SetStatusMessage(L"Failed to initialize Kinect Fusion reconstruction volume on CPU.");
 		}
-
 		return hr;
 	}
 
@@ -797,9 +850,9 @@ HRESULT CKinectFusionBasics::InitializeKinectFusion( )
 	return hr;
 }
 
-/// <summary>
-/// Handle new depth data and perform Kinect Fusion processing
-/// </summary>
+
+//██深度数据重建,点云融合过程
+/// Handle new depth data and perform Kinect Fusion processing  处理新的深度数据 并进行Fusion点云融合
 void CKinectFusionBasics::ProcessDepth( )
 {
 	if (m_bInitializeError)
@@ -814,10 +867,10 @@ void CKinectFusionBasics::ProcessDepth( )
 	// Note: this will potentially continually reset live reconstructions on slow machines which
 	// cannot process a live frame in less time than the reset threshold. Increase the number of
 	// milliseconds in cResetOnTimeStampSkippedMilliseconds if this is a problem.
+
 	if (m_bAutoResetReconstructionOnTimeout && m_cFrameCounter!=0&&m_bResetReconstruction)
 	{
 		ResetReconstruction( );
-
 		if (FAILED(hr))
 		{
 			return;
@@ -832,10 +885,10 @@ void CKinectFusionBasics::ProcessDepth( )
 	}
 
 	////////////////////////////////////////////////////////
-	// Depth to DepthFloat
-
+	////【】Depth to DepthFloat
 	// Convert the pixels describing extended depth as unsigned short type in millimeters to depth
 	// as floating point type in meters.
+	//Converts the specified array of Kinect depth pixels to a NUI_FUSION_IMAGE_FRAME object representing a depth float frame.
 	hr = m_pVolume->DepthToDepthFloatFrame(m_pDepthImagePixelBuffer , m_cDepthImagePixels*sizeof(UINT16) , m_pDepthFloatImage , m_fMinDepthThreshold , m_fMaxDepthThreshold , m_bMirrorDepthFrame);
 
 	if (FAILED(hr))
@@ -845,40 +898,47 @@ void CKinectFusionBasics::ProcessDepth( )
 	}
 
 	////////////////////////////////////////////////////////
-	// ProcessFrame
-
+	// //【】ProcessFrame
+	//【】Vihan
 	// Perform the camera tracking and update the Kinect Fusion Volume
 	// This will create memory on the GPU, upload the image, run camera tracking and integrate the
 	// data into the Reconstruction Volume if successful. Note that passing nullptr as the final 
 	// parameter will use and update the internal camera pose.
-	hr = m_pVolume->ProcessFrame(m_pDepthFloatImage , NUI_FUSION_DEFAULT_ALIGN_ITERATION_COUNT , m_cMaxIntegrationWeight , nullptr , &m_worldToCameraTransform);
+	//Processes the specified depth frame and color frame through the Kinect Fusion pipeline.
+	hr = m_pVolume->ProcessFrame(m_pDepthFloatImage , nullptr , NUI_FUSION_DEFAULT_ALIGN_ITERATION_COUNT , m_cMaxIntegrationWeight , 0.0 , nullptr , &m_worldToCameraTransform);
 
 	// Test to see if camera tracking failed. 
 	// If it did fail, no data integration or raycast for reference points and normals will have taken 
-	//  place, and the internal camera pose will be unchanged.
+	// place, and the internal camera pose will be unchanged.
+	//【】重建失败
 	if (FAILED(hr))
 	{
 		if (hr==E_NUI_FUSION_TRACKING_ERROR)
 		{
 			m_cLostFrameCounter++;
 			m_bTrackingFailed = true;
-			SetStatusMessage(L"Kinect Fusion camera tracking failed! Align the camera to the last tracked position. ");
+			cout<<"------------移动太快,重建失败"<<endl;
+			SetStatusMessage(L"Kinect Fusion camera tracking failed! Align the camera to the last tracked position.");
 		}
 		else
 		{
+			cout<<"------------Kinect Fusion ProcessFrame call failed!"<<endl;
 			SetStatusMessage(L"Kinect Fusion ProcessFrame call failed!");
 			return;
 		}
 	}
+	//【】 如果这一帧重建成功, 那么调整相机姿态 
 	else
 	{
 		Matrix4 calculatedCameraPose;
 		hr = m_pVolume->GetCurrentWorldToCameraTransform(&calculatedCameraPose);
-
 		if (SUCCEEDED(hr))
 		{
+			cout<<"---------------重建成功------------"<<endl;
+
 			// Set the pose
 			m_worldToCameraTransform = calculatedCameraPose;
+			//【】设立标志
 			m_cLostFrameCounter = 0;
 			m_bTrackingFailed = false;
 		}
@@ -902,7 +962,7 @@ void CKinectFusionBasics::ProcessDepth( )
 	// CalculatePointCloud
 
 	// Raycast all the time, even if we camera tracking failed, to enable us to visualize what is happening with the system
-	hr = m_pVolume->CalculatePointCloud(m_pPointCloud , &m_worldToCameraTransform);
+	hr = m_pVolume->CalculatePointCloud(m_pPointCloud , nullptr , &m_worldToCameraTransform);
 
 	if (FAILED(hr))
 	{
@@ -911,19 +971,15 @@ void CKinectFusionBasics::ProcessDepth( )
 	}
 
 	////////////////////////////////////////////////////////
-	// ShadePointCloud and render
-
+	// ShadePointCloud and render渲染
 	hr = NuiFusionShadePointCloud(m_pPointCloud , &m_worldToCameraTransform , nullptr , m_pShadedSurface , nullptr);
-
 	if (FAILED(hr))
 	{
 		SetStatusMessage(L"Kinect Fusion NuiFusionShadePointCloud call failed.");
 		return;
 	}
-
 	// Draw the shaded raycast volume image
 	BYTE * pBuffer = m_pShadedSurface->pFrameBuffer->pBits;
-
 	// Draw the data with Direct2D
 	m_pDrawDepth->Draw(pBuffer , m_cDepthWidth * m_cDepthHeight * cBytesPerPixel);
 
@@ -953,6 +1009,7 @@ void CKinectFusionBasics::ProcessDepth( )
 }
 
 
+//██重置重建
 /// <summary>
 /// Reset the reconstruction camera pose and clear the volume.
 /// </summary>
@@ -1002,16 +1059,154 @@ HRESULT CKinectFusionBasics::ResetReconstruction( )
 	{
 		SetStatusMessage(L"Failed to reset reconstruction.");
 	}
-
 	return hr;
 }
 
 
 
-/// <summary>
-/// Set the status bar message
-/// </summary>
-/// <param name="szMessage">message to display</param>
+//██保存生成的Mesh文件
+HRESULT SaveMeshFile(INuiFusionColorMesh* pMesh , KinectFusionMeshTypes saveMeshType)
+{
+	HRESULT hr = S_OK;
+
+	if (nullptr==pMesh)
+	{
+		return E_INVALIDARG;
+	}
+
+	CComPtr<IFileSaveDialog>  pSaveDlg;
+
+	// Create the file save dialog object.
+	hr = pSaveDlg.CoCreateInstance(__uuidof(FileSaveDialog));
+
+	if (FAILED(hr))
+	{
+		return hr;
+	}
+
+	// Set the dialog title
+	hr = pSaveDlg->SetTitle(L"Save Kinect Fusion Mesh");
+	if (SUCCEEDED(hr))
+	{
+		// Set the button text
+		hr = pSaveDlg->SetOkButtonLabel(L"Save");
+		if (SUCCEEDED(hr))
+		{
+			// Set a default filename
+			if (Stl==saveMeshType)
+			{
+				hr = pSaveDlg->SetFileName(L"MeshedReconstruction.stl");
+			}
+			else if (Obj==saveMeshType)
+			{
+				hr = pSaveDlg->SetFileName(L"MeshedReconstruction.obj");
+			}
+			else if (Ply==saveMeshType)
+			{
+				hr = pSaveDlg->SetFileName(L"MeshedReconstruction.ply");
+			}
+
+			if (SUCCEEDED(hr))
+			{
+				// Set the file type extension
+				if (Stl==saveMeshType)
+				{
+					hr = pSaveDlg->SetDefaultExtension(L"stl");
+				}
+				else if (Obj==saveMeshType)
+				{
+					hr = pSaveDlg->SetDefaultExtension(L"obj");
+				}
+				else if (Ply==saveMeshType)
+				{
+					hr = pSaveDlg->SetDefaultExtension(L"ply");
+				}
+
+				if (SUCCEEDED(hr))
+				{
+					// Set the file type filters
+					if (Stl==saveMeshType)
+					{
+						COMDLG_FILTERSPEC allPossibleFileTypes[] = {
+							{ L"Stl mesh files", L"*.stl" },
+							{ L"All files", L"*.*" }
+						};
+
+						hr = pSaveDlg->SetFileTypes(
+							ARRAYSIZE(allPossibleFileTypes) ,
+							allPossibleFileTypes);
+					}
+					else if (Obj==saveMeshType)
+					{
+						COMDLG_FILTERSPEC allPossibleFileTypes[] = {
+							{ L"Obj mesh files", L"*.obj" },
+							{ L"All files", L"*.*" }
+						};
+
+						hr = pSaveDlg->SetFileTypes(
+							ARRAYSIZE(allPossibleFileTypes) ,
+							allPossibleFileTypes);
+					}
+					else if (Ply==saveMeshType)
+					{
+						COMDLG_FILTERSPEC allPossibleFileTypes[] = {
+							{ L"Ply mesh files", L"*.ply" },
+							{ L"All files", L"*.*" }
+						};
+
+						hr = pSaveDlg->SetFileTypes(
+							ARRAYSIZE(allPossibleFileTypes) ,
+							allPossibleFileTypes);
+					}
+
+					if (SUCCEEDED(hr))
+					{
+						// Show the file selection box
+						hr = pSaveDlg->Show(m_hWnd);
+
+						// Save the mesh to the chosen file.
+						if (SUCCEEDED(hr))
+						{
+							CComPtr<IShellItem> pItem;
+							hr = pSaveDlg->GetResult(&pItem);
+
+							if (SUCCEEDED(hr))
+							{
+								LPOLESTR pwsz = nullptr;
+								hr = pItem->GetDisplayName(SIGDN_FILESYSPATH , &pwsz);
+
+								if (SUCCEEDED(hr))
+								{
+									//SetStatusMessage(L"Saving mesh file, please wait...");
+									SetCursor(LoadCursor(nullptr , MAKEINTRESOURCE(IDC_WAIT)));
+
+									if (Stl==saveMeshType)
+									{
+										hr = WriteBinarySTLMeshFile(pMesh , pwsz);
+									}
+									else if (Obj==saveMeshType)
+									{
+										hr = WriteAsciiObjMeshFile(pMesh , pwsz);
+									}
+									else if (Ply==saveMeshType)
+									{
+										hr = WriteAsciiPlyMeshFile(pMesh , pwsz , true , false);
+									}
+									CoTaskMemFree(pwsz);
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return hr;
+}
+
+
+//██状态栏消息更新
 void CKinectFusionBasics::SetStatusMessage(WCHAR * szMessage)
 {
 	SendDlgItemMessageW(m_hWnd , IDC_STATUS , WM_SETTEXT , 0 , (LPARAM)szMessage);

@@ -170,9 +170,12 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <None Include="app.ico" />
+    <None Include="resource.hm" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ImageRenderer.h" />
+    <ClInclude Include="KinectFusionHelper.h" />
+    <ClInclude Include="KinectFusionParams.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="KinectFusionBasics.h" />
     <ClInclude Include="stdafx.h" />
@@ -181,6 +184,7 @@
   <ItemGroup>
     <ClCompile Include="ImageRenderer.cpp" />
     <ClCompile Include="KinectFusionBasics.cpp" />
+    <ClCompile Include="KinectFusionHelper.cpp" />
     <ClCompile Include="Timer.cpp" />
   </ItemGroup>
   <ItemGroup>
