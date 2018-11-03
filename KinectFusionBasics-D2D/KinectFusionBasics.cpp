@@ -351,8 +351,7 @@ LRESULT CALLBACK CKinectFusionBasics::DlgProc(HWND hWnd , UINT message , WPARAM 
 	switch (message)
 	{
 
-		//对话框创建后, 对数据进行初始化
-
+		////【】对话框创建后, 对数据进行初始化
 		case WM_INITDIALOG:
 		{
 			// Bind application window handle
@@ -417,6 +416,7 @@ LRESULT CALLBACK CKinectFusionBasics::DlgProc(HWND hWnd , UINT message , WPARAM 
 }
 
 /// <summary>
+//【】初始化Kinect摄像头
 /// Create the first connected Kinect found 
 /// </summary>
 /// <returns>indicates success or failure</returns>
@@ -614,6 +614,7 @@ HRESULT CKinectFusionBasics::OnCoordinateMappingChanged( )
 
 /// <summary>
 /// Initialize Kinect Fusion volume and images for processing
+///【】初始化KinectFusion
 /// </summary>
 /// <returns>S_OK on success, otherwise failure code</returns>
 HRESULT CKinectFusionBasics::InitializeKinectFusion( )
@@ -623,16 +624,16 @@ HRESULT CKinectFusionBasics::InitializeKinectFusion( )
 	// Check to ensure suitable DirectX11 compatible hardware exists before initializing Kinect Fusion
 	WCHAR description[MAX_PATH];
 	WCHAR instancePath[MAX_PATH];
-	UINT memorySize = 0;
-
+	UINT  memorySize = 0;
+	////【】设备检查:硬件是否支持
 	if (FAILED(hr = NuiFusionGetDeviceInfo(
-		m_processorType ,
-		m_deviceIndex ,
-		&description[0] ,
-		ARRAYSIZE(description) ,
-		&instancePath[0] ,
-		ARRAYSIZE(instancePath) ,
-		&memorySize)))
+		m_processorType , //设备类型 CPU or GPU
+		m_deviceIndex ,   //-1表示使用默认设备,设备索引
+		&description[0] ,  //设备描述符
+		ARRAYSIZE(description) , //描述的大小
+		&instancePath[0] ,   // 用于重建的GPU中的DirectX2D 实例
+		ARRAYSIZE(instancePath) , //The size of the instance path , in bytes.
+		&memorySize)))//Gets the amount of dedicated video memory on the GPU being used for reconstruction.
 	{
 		if (hr==E_NUI_BADINDEX)
 		{
@@ -651,12 +652,32 @@ HRESULT CKinectFusionBasics::InitializeKinectFusion( )
 		return hr;
 	}
 
-	// Create the Kinect Fusion Reconstruction Volume
+	//【】创建Fusion 容积重建INuiFusionReconstruction
+	//【】
+	/*
+		参数1: 容积重建参数
+		参数2: 设备类型
+		参数3 : 设备索引
+		参数4 : 世界到相机 坐标转换矩阵
+		参数5 : 返回指针*/
+		//m_reconstructionParams说明
+	//typedef struct _NUI_FUSION_RECONSTRUCTION_PARAMETERS
+	//{
+	//	FLOAT voxelsPerMeter;  //每米体素(体积元素或者体积像素)数量
+	//	UINT voxelCountX;      // 重建X轴体素数量
+	//	UINT voxelCountY;  //重建Y轴体素数量
+	//	UINT voxelCountZ; //重建Z轴体素数量
+	//} 	NUI_FUSION_RECONSTRUCTION_PARAMETERS;
+	//  GPU加速即显卡内存 , CPU加速即系统内存 , 这可是一笔大买卖啊。
+	//	目前主流显存在1G~2G , 差强人意。
+
+	// Create the Kinect Fusion Reconstruction Volume   m_pVolume
 	hr = NuiFusionCreateReconstruction(
 		&m_reconstructionParams ,
 		m_processorType , m_deviceIndex ,
 		&m_worldToCameraTransform ,
 		&m_pVolume);
+
 
 	if (FAILED(hr))
 	{
@@ -686,8 +707,9 @@ HRESULT CKinectFusionBasics::InitializeKinectFusion( )
 		return hr;
 	}
 
-	// Save the default world to volume transformation to be optionally used in ResetReconstruction
+	// Save the default world to volume transformation to be optionally used in ResetReconstruction 世界到容积坐标转换矩阵:
 	hr = m_pVolume->GetCurrentWorldToVolumeTransform(&m_defaultWorldToVolumeTransform);
+	//通过修改世界到容积转换矩阵可以控制重建范围.
 	if (FAILED(hr))
 	{
 		SetStatusMessage(L"Failed in call to GetCurrentWorldToVolumeTransform.");
@@ -704,7 +726,13 @@ HRESULT CKinectFusionBasics::InitializeKinectFusion( )
 		}
 	}
 
+
+
 	// Frames generated from the depth input
+		//我们需要将收集的深度数据浮点化，再平滑化(可选)，计算出点云后，输出表面(可选)与法线图像(可选)。
+	//即需要5张Fusion图像帧
+
+	//██ 创建平滑浮点深度帧
 	hr = NuiFusionCreateImageFrame(NUI_FUSION_IMAGE_TYPE_FLOAT , m_cDepthWidth , m_cDepthHeight , &m_cameraParameters , &m_pDepthFloatImage);
 	if (FAILED(hr))
 	{
@@ -712,6 +740,7 @@ HRESULT CKinectFusionBasics::InitializeKinectFusion( )
 		return hr;
 	}
 
+	//██ 创建点云帧
 	// Create images to raycast the Reconstruction Volume
 	hr = NuiFusionCreateImageFrame(NUI_FUSION_IMAGE_TYPE_POINT_CLOUD , m_cDepthWidth , m_cDepthHeight , &m_cameraParameters , &m_pPointCloud);
 	if (FAILED(hr))
@@ -720,6 +749,7 @@ HRESULT CKinectFusionBasics::InitializeKinectFusion( )
 		return hr;
 	}
 
+	// ██创建Fusion图像帧
 	// Create images to raycast the Reconstruction Volume
 	hr = NuiFusionCreateImageFrame(NUI_FUSION_IMAGE_TYPE_COLOR , m_cDepthWidth , m_cDepthHeight , &m_cameraParameters , &m_pShadedSurface);
 	if (FAILED(hr))
@@ -728,6 +758,7 @@ HRESULT CKinectFusionBasics::InitializeKinectFusion( )
 		return hr;
 	}
 
+	//【】
 	_ASSERT(m_pDepthImagePixelBuffer==nullptr);
 	m_pDepthImagePixelBuffer = new(std::nothrow) UINT16[m_cDepthImagePixels];
 	if (nullptr==m_pDepthImagePixelBuffer)
@@ -735,7 +766,7 @@ HRESULT CKinectFusionBasics::InitializeKinectFusion( )
 		SetStatusMessage(L"Failed to initialize Kinect Fusion depth image pixel buffer.");
 		return hr;
 	}
-
+	//【】
 	_ASSERT(m_pDepthDistortionMap==nullptr);
 	m_pDepthDistortionMap = new(std::nothrow) DepthSpacePoint[m_cDepthImagePixels];
 	if (nullptr==m_pDepthDistortionMap)
@@ -743,7 +774,7 @@ HRESULT CKinectFusionBasics::InitializeKinectFusion( )
 		SetStatusMessage(L"Failed to initialize Kinect Fusion depth image distortion buffer.");
 		return E_OUTOFMEMORY;
 	}
-
+	//【】
 	SAFE_DELETE_ARRAY(m_pDepthDistortionLT);
 	m_pDepthDistortionLT = new(std::nothrow) UINT[m_cDepthImagePixels];
 
@@ -763,7 +794,6 @@ HRESULT CKinectFusionBasics::InitializeKinectFusion( )
 
 	// Set an introductory message
 	SetStatusMessage(L"Click ‘Reset Reconstruction' to clear!");
-
 	return hr;
 }
 

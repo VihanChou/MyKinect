@@ -21,8 +21,6 @@ ImageRenderer::ImageRenderer( ) :
 { }
 
 
-
-
 /// <summary>
 /// 析构函数
 /// </summary>
