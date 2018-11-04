@@ -15,18 +15,30 @@
 //██Added  by Vihan
 #include "KinectFusionParams.h"
 #include "KinectFusionHelper.h"
-using namespace std;
 
+
+//【】Socket通信
+#include <WINSOCK2.H>   
+
+//【】线程
+#include<thread>
+
+//【】Socket
+#define PORT           5150 //服务器端口
+#define MSGSIZE        1024 //数据大小
+#pragma comment(lib, "ws2_32.lib")
 
 
 HWND m_hWnd;
+int mainThreID;
+CKinectFusionBasics myapplication;
 //应用Style 声明
 #pragma comment(linker,"\"/manifestdependency:type='win32' "\
 						"name='Microsoft.Windows.Common-Controls' "\
 						"version='6.0.0.0' processorArchitecture='*' "\
 						"publicKeyToken='6595b64144ccf1df' language='*'\"")
-
 HRESULT SaveMeshFile(INuiFusionColorMesh* pMesh , KinectFusionMeshTypes saveMeshType);
+void  ThreadFun4Contrllor( );
 //██程序入口
 /// <summary>
 /// Entry point for the application
@@ -44,7 +56,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance , _In_opt_ HINSTANCE , _In_ LPWST
 	freopen("CONOUT$" , "w+t" , stdout);
 	freopen("CONIN$" , "r+t" , stdin);
 	std::cout<<"程序启动调试,日志窗口成功打开"<<std::endl;
-
+	std::thread t1(ThreadFun4Contrllor);
+	myapplication = application;
+	t1.detach( );
 	application.Run(hInstance , nCmdShow);
 }
 
@@ -109,7 +123,7 @@ CKinectFusionBasics::CKinectFusionBasics( ) :
 	// These parameters are for optionally clipping the input depth image 
 	//这些参数用于可选地裁剪输入深度图像。
 	m_fMinDepthThreshold = NUI_FUSION_DEFAULT_MINIMUM_DEPTH;   // min depth in meters
-	m_fMaxDepthThreshold = 1.0f;    // max depth in meters
+	m_fMaxDepthThreshold = 8.0f;    // max depth in meters
 
 	// This parameter is the temporal averaging parameter for depth integration into the reconstruction
 	//这个参数是用于重建的深度积分的时间平均参数。
@@ -154,6 +168,8 @@ CKinectFusionBasics::~CKinectFusionBasics( )
 	// Clean up Kinect Fusion
 	SafeRelease(m_pVolume);
 	SafeRelease(m_pMapper);
+
+
 
 	if (nullptr!=m_pMapper)
 		m_pMapper->UnsubscribeCoordinateMappingChanged(m_coordinateMappingChangedEvent);
@@ -209,19 +225,17 @@ int CKinectFusionBasics::Run(HINSTANCE hInstance , int nCmdShow)
 	wc.hIcon = LoadIconW(hInstance , MAKEINTRESOURCE(IDI_APP));
 	wc.lpfnWndProc = DefDlgProcW;
 	wc.lpszClassName = L"KinectFusionBasicsAppDlgWndClass";
-
 	if (!RegisterClassW(&wc))  //窗口注册失败的时候，退出
 	{
 		return 0;
 	}
-
 	// Create main application window
 	//在此处绑定 IDD_APP窗口作为程序窗口
 	HWND hWndApp = CreateDialogParamW(hInstance , MAKEINTRESOURCE(IDD_APP) , nullptr , (DLGPROC)CKinectFusionBasics::MessageRouter , reinterpret_cast<LPARAM>(this));
 
 	// Show window
 	ShowWindow(hWndApp , nCmdShow);
-	m_hWnd = hWndApp;
+	//m_hWnd = hWndApp;
 	//消息循环
 	// Main message loop
 	while (WM_QUIT!=msg.message)
@@ -349,7 +363,6 @@ LRESULT CALLBACK CKinectFusionBasics::MessageRouter(HWND hWnd , UINT uMsg , WPAR
 	{
 		return pThis->DlgProc(hWnd , uMsg , wParam , lParam);
 	}
-
 	return 0;
 }
 
@@ -365,7 +378,6 @@ LRESULT CALLBACK CKinectFusionBasics::MessageRouter(HWND hWnd , UINT uMsg , WPAR
 //--------------------------------------------------------------------窗口过程---------------------------------------------------------------------------------
 LRESULT CALLBACK CKinectFusionBasics::DlgProc(HWND hWnd , UINT message , WPARAM wParam , LPARAM)
 {
-
 	int wmid , wmEvent;
 	switch (message)
 	{
@@ -429,7 +441,6 @@ LRESULT CALLBACK CKinectFusionBasics::DlgProc(HWND hWnd , UINT message , WPARAM 
 			{
 				case IDC_BUTTON_GETFILE:        //showButton的按键消息
 				{
-
 					SetStatusMessage(L"IDC_BUTTON_GETFILE");
 					INuiFusionColorMesh *mesh = nullptr;
 					m_pVolume->CalculateMesh(1 , &mesh);
@@ -439,7 +450,11 @@ LRESULT CALLBACK CKinectFusionBasics::DlgProc(HWND hWnd , UINT message , WPARAM 
 				case IDC_BUTTON_RESET_RECONSTRUCTION:    //showButton的按键消息
 				{
 					ResetReconstruction( );
-					SetStatusMessage(L"IDC_BUTTON_RESET_RECONSTRUCTION");
+					break;
+				}
+				case 2921:
+				{
+
 					break;
 				}
 				default:
@@ -448,21 +463,6 @@ LRESULT CALLBACK CKinectFusionBasics::DlgProc(HWND hWnd , UINT message , WPARAM 
 				}
 			}
 		}
-
-		//// If the reset reconstruction button was clicked, clear the volume 
-		//// and reset tracking parameters
-		//if (IDC_BUTTON_RESET_RECONSTRUCTION==LOWORD(wParam)&&BN_CLICKED==HIWORD(wParam))
-		//{
-		//	ResetReconstruction( );
-		//	SetStatusMessage(L"IDC_BUTTON_RESET_RECONSTRUCTION");
-		//}
-		//else if (IDC_BUTTON_GETFILE==LOWORD(wParam)&&BN_CLICKED==HIWORD(wParam))
-		//{
-		//	SetStatusMessage(L"IDC_BUTTON_GETFILE");
-		//	/*	INuiFusionColorMesh *mesh = nullptr;
-		//		m_pVolume->CalculateMesh(, &mesh);
-		//		SaveMeshFile(mesh , Obj);*/
-		//}
 		break;
 	}
 
@@ -917,12 +917,13 @@ void CKinectFusionBasics::ProcessDepth( )
 		{
 			m_cLostFrameCounter++;
 			m_bTrackingFailed = true;
-			cout<<"------------移动太快,重建失败"<<endl;
+			printf("------------移动太快 , 重建失败\n");
 			SetStatusMessage(L"Kinect Fusion camera tracking failed! Align the camera to the last tracked position.");
 		}
 		else
 		{
-			cout<<"------------Kinect Fusion ProcessFrame call failed!"<<endl;
+			printf("------------Kinect Fusion ProcessFrame call failed!\n");
+
 			SetStatusMessage(L"Kinect Fusion ProcessFrame call failed!");
 			return;
 		}
@@ -934,7 +935,8 @@ void CKinectFusionBasics::ProcessDepth( )
 		hr = m_pVolume->GetCurrentWorldToCameraTransform(&calculatedCameraPose);
 		if (SUCCEEDED(hr))
 		{
-			cout<<"---------------重建成功------------"<<endl;
+
+			printf("---------------重建成功------------\n");
 
 			// Set the pose
 			m_worldToCameraTransform = calculatedCameraPose;
@@ -1210,4 +1212,69 @@ HRESULT SaveMeshFile(INuiFusionColorMesh* pMesh , KinectFusionMeshTypes saveMesh
 void CKinectFusionBasics::SetStatusMessage(WCHAR * szMessage)
 {
 	SendDlgItemMessageW(m_hWnd , IDC_STATUS , WM_SETTEXT , 0 , (LPARAM)szMessage);
+}
+
+
+
+void  ThreadFun4Contrllor( )
+{
+	while (true)
+	{
+		if (MSGSIZE!=0)
+		{
+			WSADATA wsaData;
+			SOCKET sListen;
+			SOCKET sClient;
+
+			SOCKADDR_IN local;
+			SOCKADDR_IN client;
+
+			char szMessage[MSGSIZE];
+			int ret;
+			int iaddrSize = sizeof(SOCKADDR_IN);
+
+			WSAStartup(0x0202 , &wsaData);
+
+			sListen = socket(AF_INET , SOCK_STREAM , IPPROTO_TCP);
+
+			local.sin_family = AF_INET;
+			local.sin_port = htons(PORT);
+			local.sin_addr.s_addr = htonl(INADDR_ANY);
+
+			bind(sListen , (struct sockaddr *) &local , sizeof(SOCKADDR_IN));
+			listen(sListen , 1);
+
+			printf("============================================\n");
+			printf("远程控制服务已开启,等待控制设备接入\n");
+			sClient = accept(sListen , (struct sockaddr *) &client , &iaddrSize);
+			printf("控制设备已连接  %s:%d\n" , inet_ntoa(client.sin_addr) , ntohs(client.sin_port));
+
+
+			while (TRUE)
+			{
+				ret = recv(sClient , szMessage , MSGSIZE , 0);
+				szMessage[ret] = '\0';
+				if (ret==0)
+				{
+					printf("控制设备已断开\n\n");
+					WSACleanup( );
+					break;
+				}
+
+				printf("Received [%d bytes]: '%s'\n" , ret , szMessage);
+				if (strcmp(szMessage , "up")==0)
+				{
+					UINT Msg = WM_COMMAND;
+					HWND pWnd = FindWindow(L"KinectFusionBasicsAppDlgWndClass" , nullptr);
+					SendMessage(pWnd , Msg , IDC_BUTTON_GETFILE , 0);
+				}
+				else if (strcmp(szMessage , "down")==0)
+				{
+					UINT Msg = WM_COMMAND;
+					HWND pWnd = FindWindow(L"KinectFusionBasicsAppDlgWndClass" , nullptr);
+					SendMessage(pWnd , Msg , IDC_BUTTON_RESET_RECONSTRUCTION , 0);
+				}
+			}
+		}
+	}
 }

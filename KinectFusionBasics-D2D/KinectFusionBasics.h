@@ -54,7 +54,13 @@ public:
 
 	// Creates the main window and begins processing
 	int                         Run(HINSTANCE hInstance , int nCmdShow);
+	void CKinectFusionBasics::ThreadFun4Contrllor( ); //TODO
 
+
+	//██重置相机姿势并清除重建容积
+	/// Reset the reconstruction camera pose and clear the volume.
+	/// <returns>S_OK on success, otherwise failure code</returns>
+	HRESULT                     ResetReconstruction( );
 private:
 	HWND                        m_hWnd;
 
@@ -103,10 +109,7 @@ private:
 	/// Handle new depth data
 	void                        ProcessDepth( );
 
-	//██重置相机姿势并清除重建容积
-	/// Reset the reconstruction camera pose and clear the volume.
-	/// <returns>S_OK on success, otherwise failure code</returns>
-	HRESULT                     ResetReconstruction( );
+
 
 	//██状态栏消息设置函数
 	void                        SetStatusMessage(WCHAR* szMessage);
