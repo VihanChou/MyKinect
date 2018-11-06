@@ -1,10 +1,3 @@
-//------------------------------------------------------------------------------
-// <copyright file="KinectFusionHelper.cpp" company="Microsoft">
-//     Copyright (c) Microsoft Corporation.  All rights reserved.a
-// </copyright>
-//------------------------------------------------------------------------------
-
-// System includes
 #include "stdafx.h"
 
 #define _USE_MATH_DEFINES

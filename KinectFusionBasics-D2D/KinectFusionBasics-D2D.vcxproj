@@ -22,7 +22,7 @@
     <ProjectGuid>{0E292751-8622-475B-B2B9-7102BA3A5129}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>KinectFusionBasics-D2D</RootNamespace>
-    <ProjectName>KinectFusionBasics-D2D</ProjectName>
+    <ProjectName>VihanKinect</ProjectName>
     <WindowsTargetPlatformVersion>10.0.17134.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />

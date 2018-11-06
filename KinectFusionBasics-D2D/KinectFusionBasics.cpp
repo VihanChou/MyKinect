@@ -7,8 +7,6 @@
 #include <new>
 #include<iostream>
 
-
-// Project includes
 #include "resource.h"
 #include "KinectFusionBasics.h"
 
@@ -16,17 +14,19 @@
 #include "KinectFusionParams.h"
 #include "KinectFusionHelper.h"
 
-
 //【】Socket通信
 #include <WINSOCK2.H>   
 
 //【】线程
 #include<thread>
 
-//【】Socket
+//【】Socket 服务器控制相关
 #define PORT           5150 //服务器端口
 #define MSGSIZE        1024 //数据大小
 #pragma comment(lib, "ws2_32.lib")
+
+#define MSG_CONNECT 8899
+#define MSG_DISCONNECT 8898
 
 
 HWND m_hWnd;
@@ -39,23 +39,16 @@ CKinectFusionBasics myapplication;
 						"publicKeyToken='6595b64144ccf1df' language='*'\"")
 HRESULT SaveMeshFile(INuiFusionColorMesh* pMesh , KinectFusionMeshTypes saveMeshType);
 void  ThreadFun4Contrllor( );
+
 //██程序入口
-/// <summary>
-/// Entry point for the application
-/// </summary>
-/// <param name="hInstance">handle to the application instance</param>
-/// <param name="hPrevInstance">always 0</param>
-/// <param name="lpCmdLine">command line arguments</param>
-/// <param name="nCmdShow">whether to display minimized, maximized, or normally</param>
-/// <returns>status</returns>
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance , _In_opt_ HINSTANCE , _In_ LPWSTR , _In_ int nCmdShow)
 {
 	CKinectFusionBasics application;
 	//初始化控制台窗口
-	AllocConsole( );
-	freopen("CONOUT$" , "w+t" , stdout);
-	freopen("CONIN$" , "r+t" , stdin);
-	std::cout<<"程序启动调试,日志窗口成功打开"<<std::endl;
+	//AllocConsole( );
+	//freopen("CONOUT$" , "w+t" , stdout);
+	//freopen("CONIN$" , "r+t" , stdin);
+	//std::cout<<"程序启动调试,日志窗口成功打开"<<std::endl;
 	std::thread t1(ThreadFun4Contrllor);
 	myapplication = application;
 	t1.detach( );
@@ -112,8 +105,6 @@ CKinectFusionBasics::CKinectFusionBasics( ) :
 	// create heap storage for depth pixel data in RGBX format
 	m_pDepthRGBX = new BYTE[m_cDepthImagePixels * cBytesPerPixel];
 
-	// Define a cubic Kinect Fusion reconstruction volume,
-	// with the Kinect at the center of the front face and the volume directly in front of Kinect.
 	//定义一个立方Kinect融合重建体积，Kinect位于前面的中心，体积直接位于Kinect的前面。
 	m_reconstructionParams.voxelsPerMeter = 256;// 1000mm / 256vpm = ~3.9mm/voxel    （体素）
 	m_reconstructionParams.voxelCountX = 384;   // 384 / 256vpm = 1.5m wide reconstruction
@@ -125,20 +116,12 @@ CKinectFusionBasics::CKinectFusionBasics( ) :
 	m_fMinDepthThreshold = NUI_FUSION_DEFAULT_MINIMUM_DEPTH;   // min depth in meters
 	m_fMaxDepthThreshold = 8.0f;    // max depth in meters
 
-	// This parameter is the temporal averaging parameter for depth integration into the reconstruction
 	//这个参数是用于重建的深度积分的时间平均参数。
 	m_cMaxIntegrationWeight = NUI_FUSION_DEFAULT_INTEGRATION_WEIGHT;	// Reasonable for static scenes
 
 	//此参数设置是否使用GPU或CPU处理。请注意，CPU可能会太慢，无法实时处理。
 	m_processorType = NUI_FUSION_RECONSTRUCTION_PROCESSOR_TYPE_AMP; //AMP:GPU  CPU:CPU
 
-	// If GPU processing is selected, we can choose the index of the device we would like to
-	// use for processing by setting this zero-based index parameter. Note that setting -1 will cause
-	// automatic selection of the most suitable device (specifically the DirectX11 compatible device 
-	// with largest memory), which is useful in systems with multiple GPUs when only one reconstruction
-	// volume is required. Note that the automatic choice will not load balance across multiple 
-	// GPUs, hence users should manually select GPU indices when multiple reconstruction volumes 
-	// are required, each on a separate device.
 	//如果选择了GPU处理，我们可以通过设置这个基于零的索引参数来选择要用于处理的设备的索引。
 	//注意，设置-1将导致自动选择最合适的设备（特别是具有最大内存的DirectX11兼容设备），
 	//当只需要一个重建卷时，这对于具有多个GPU的系统很有用。
@@ -146,13 +129,10 @@ CKinectFusionBasics::CKinectFusionBasics( ) :
 
 	m_deviceIndex = -1;    // automatically choose device index for processing
 
-
 	//初始化变量m_worldToCameraTransform ，m_defaultWorldToVolumeTransform
 	SetIdentityMatrix(m_worldToCameraTransform);
 	SetIdentityMatrix(m_defaultWorldToVolumeTransform);
 
-	// We don't know these at object creation time, so we use nominal values.
-	// These will later be updated in response to the CoordinateMappingChanged event.
 	//在对象创建时我们不知道这些值，所以我们使用标称值。这些值稍后将根据.MappingChanged事件进行更新。
 	//设置相机内参
 	m_cameraParameters.focalLengthX = NUI_KINECT_DEPTH_NORM_FOCAL_LENGTH_X;
@@ -206,12 +186,8 @@ CKinectFusionBasics::~CKinectFusionBasics( )
 }
 
 //██创建主窗口并开始处理点云
-/// Creates the main window and begins processing  //创建主窗口并开始处理
-/// <param name="hInstance">handle to the application instance</param>
-/// <param name="nCmdShow">whether to display minimized, maximized, or normally</param>
 int CKinectFusionBasics::Run(HINSTANCE hInstance , int nCmdShow)
 {
-
 	MSG       msg = { 0 };
 	WNDCLASS  wc;
 
@@ -252,7 +228,6 @@ int CKinectFusionBasics::Run(HINSTANCE hInstance , int nCmdShow)
 			{
 				continue;
 			}
-
 			TranslateMessage(&msg);
 			DispatchMessageW(&msg);
 		}
@@ -260,7 +235,6 @@ int CKinectFusionBasics::Run(HINSTANCE hInstance , int nCmdShow)
 
 	return static_cast<int>(msg.wParam);
 }
-
 
 //██程序主要的处理过程
 /// Main processing function
@@ -335,16 +309,7 @@ void CKinectFusionBasics::Update( )
 	SafeRelease(pDepthFrame);
 }
 
-
 //██消息路由
-/// <summary>
-/// Handles window messages, passes most to the class instance to handle
-/// </summary>
-/// <param name="hWnd">window message is for</param>
-/// <param name="uMsg">message</param>
-/// <param name="wParam">message data</param>
-/// <param name="lParam">additional message data</param>
-/// <returns>result of message processing</returns>
 LRESULT CALLBACK CKinectFusionBasics::MessageRouter(HWND hWnd , UINT uMsg , WPARAM wParam , LPARAM lParam)
 {
 	CKinectFusionBasics* pThis = nullptr;
@@ -367,16 +332,8 @@ LRESULT CALLBACK CKinectFusionBasics::MessageRouter(HWND hWnd , UINT uMsg , WPAR
 }
 
 //██窗口过程
-/// <summary>
-/// Handle windows messages for the class instance
-/// </summary>
-/// <param name="hWnd">window message is for</param>
-/// <param name="uMsg">message</param>
-/// <param name="wParam">message data</param>
-/// <param name="lParam">additional message data</param>
-/// <returns>result of message processing</returns>
 //--------------------------------------------------------------------窗口过程---------------------------------------------------------------------------------
-LRESULT CALLBACK CKinectFusionBasics::DlgProc(HWND hWnd , UINT message , WPARAM wParam , LPARAM)
+LRESULT CALLBACK CKinectFusionBasics::DlgProc(HWND hWnd , UINT message , WPARAM wParam , LPARAM lParam)
 {
 	int wmid , wmEvent;
 	switch (message)
@@ -421,6 +378,16 @@ LRESULT CALLBACK CKinectFusionBasics::DlgProc(HWND hWnd , UINT message , WPARAM 
 		}
 		break;
 
+
+		//case WM_CTLCOLORSTATIC://拦截WM_CTLCOLORSTATIC消息
+		//{
+		//	if ((HWND)lParam==GetDlgItem(hWnd , IDC_remote))//获得指定标签句柄用来对比
+		//	{
+		//		SetTextColor((HDC)wParam , RGB(255 , 0 , 0));//设置文本颜色
+		//		SetBkMode((HDC)wParam , TRANSPARENT);//设置背景透明
+		//	}
+		//	return (INT_PTR)GetStockObject((NULL_BRUSH));//返回一个空画刷(必须)
+		//}
 		// 窗口关闭消息
 		case WM_CLOSE:
 		DestroyWindow(hWnd);
@@ -444,7 +411,7 @@ LRESULT CALLBACK CKinectFusionBasics::DlgProc(HWND hWnd , UINT message , WPARAM 
 					SetStatusMessage(L"IDC_BUTTON_GETFILE");
 					INuiFusionColorMesh *mesh = nullptr;
 					m_pVolume->CalculateMesh(1 , &mesh);
-					SaveMeshFile(mesh , Obj);
+					SaveMeshFile(mesh , Stl);
 					break;
 				}
 				case IDC_BUTTON_RESET_RECONSTRUCTION:    //showButton的按键消息
@@ -452,11 +419,51 @@ LRESULT CALLBACK CKinectFusionBasics::DlgProc(HWND hWnd , UINT message , WPARAM 
 					ResetReconstruction( );
 					break;
 				}
-				case 2921:
+				/*	case IDC_remote:
+					{
+
+						break;
+					}*/
+				case IDC_test:
 				{
+					SetStatusMessage(L"test");
+					//// 设置字体参数
+					//LOGFONT LogFont;
+					//::memset(&LogFont , 0 , sizeof(LOGFONT));
+					//LogFont.lfWeight = 400;
+					//LogFont.lfHeight = -44; // 字体大小
+					//LogFont.lfCharSet = 134;
+					//LogFont.lfOutPrecision = 3;
+					//LogFont.lfClipPrecision = 2;
+					//LogFont.lfOrientation = 45;
+					//LogFont.lfQuality = 1;
+					//LogFont.lfPitchAndFamily = 2;
+
+					//// 创建字体
+					//HFONT hFont = CreateFontIndirect(&LogFont);
+
+					//// 取得控件句柄
+					//HWND hWndStatic = GetDlgItem(hWnd , IDC_remote);
+
+					//// 设置控件字体
+					//::SendMessage(hWndStatic , WM_SETFONT , (WPARAM)hFont , 0);
+
+
+
 
 					break;
 				}
+				case MSG_CONNECT:
+				{
+					SendDlgItemMessageW(m_hWnd , IDC_remote , WM_SETTEXT , 0 , (LPARAM)(L"控制设备已连接"));
+					break;
+				}
+				case MSG_DISCONNECT:
+				{
+					SendDlgItemMessageW(m_hWnd , IDC_remote , WM_SETTEXT , 0 , (LPARAM)(L"控制设备已断开"));
+					break;
+				}
+
 				default:
 				{
 					break;
@@ -471,7 +478,6 @@ LRESULT CALLBACK CKinectFusionBasics::DlgProc(HWND hWnd , UINT message , WPARAM 
 
 
 //██初始化Kinect摄像头
-/// Create the first connected Kinect found 
 HRESULT CKinectFusionBasics::CreateFirstConnected( )
 {
 	HRESULT hr;
@@ -623,8 +629,6 @@ HRESULT CKinectFusionBasics::SetupUndistortion( )
 
 
 //██ 初始化KinectFusion容积和处理过程
-/// Initialize Kinect Fusion volume and images for processing
-/// <returns>S_OK on success, otherwise failure code</returns>
 HRESULT CKinectFusionBasics::OnCoordinateMappingChanged( )
 {
 	HRESULT hr = E_UNEXPECTED;
@@ -667,10 +671,8 @@ HRESULT CKinectFusionBasics::OnCoordinateMappingChanged( )
 	return hr;
 }
 
-
 ///██初始化KinectFusion 
 /// Initialize Kinect Fusion volume and images for processing 
-/// <returns>S_OK on success, otherwise failure code</returns>
 HRESULT CKinectFusionBasics::InitializeKinectFusion( )
 {
 	HRESULT hr = S_OK;
@@ -778,8 +780,6 @@ HRESULT CKinectFusionBasics::InitializeKinectFusion( )
 			return hr;
 		}
 	}
-
-
 
 	// Frames generated from the depth input
 		//我们需要将收集的深度数据浮点化，再平滑化(可选)，计算出点云后，输出表面(可选)与法线图像(可选)。
@@ -1065,7 +1065,6 @@ HRESULT CKinectFusionBasics::ResetReconstruction( )
 }
 
 
-
 //██保存生成的Mesh文件
 HRESULT SaveMeshFile(INuiFusionColorMesh* pMesh , KinectFusionMeshTypes saveMeshType)
 {
@@ -1203,7 +1202,6 @@ HRESULT SaveMeshFile(INuiFusionColorMesh* pMesh , KinectFusionMeshTypes saveMesh
 			}
 		}
 	}
-
 	return hr;
 }
 
@@ -1214,10 +1212,10 @@ void CKinectFusionBasics::SetStatusMessage(WCHAR * szMessage)
 	SendDlgItemMessageW(m_hWnd , IDC_STATUS , WM_SETTEXT , 0 , (LPARAM)szMessage);
 }
 
-
-
+//██手机远程控制线程
 void  ThreadFun4Contrllor( )
 {
+	SendDlgItemMessageW(m_hWnd , IDC_remote , WM_SETTEXT , 0 , (LPARAM)(L"控制设备未连接"));
 	while (true)
 	{
 		if (MSGSIZE!=0)
@@ -1249,6 +1247,9 @@ void  ThreadFun4Contrllor( )
 			sClient = accept(sListen , (struct sockaddr *) &client , &iaddrSize);
 			printf("控制设备已连接  %s:%d\n" , inet_ntoa(client.sin_addr) , ntohs(client.sin_port));
 
+			UINT Msg = WM_COMMAND;
+			HWND pWnd = FindWindow(L"KinectFusionBasicsAppDlgWndClass" , nullptr);
+			SendMessage(pWnd , Msg , MSG_CONNECT , 0);
 
 			while (TRUE)
 			{
@@ -1257,6 +1258,11 @@ void  ThreadFun4Contrllor( )
 				if (ret==0)
 				{
 					printf("控制设备已断开\n\n");
+					UINT Msg = WM_COMMAND;
+					HWND pWnd = FindWindow(L"KinectFusionBasicsAppDlgWndClass" , nullptr);
+					SendMessage(pWnd , Msg , MSG_DISCONNECT , 0);
+					/*SendDlgItemMessageW(m_hWnd , IDC_remote , WM_SETTEXT , 0 , (LPARAM)(L"控制设备已断开"));*/
+
 					WSACleanup( );
 					break;
 				}
